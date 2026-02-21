@@ -1,0 +1,5 @@
+{
+  "name": "FinFlow Builder",
+  "description": "A specialized diagramming tool for fintech and banking flow-of-funds, settlement, and reconciliation modeling.",
+  "requestFramePermissions": []
+}
