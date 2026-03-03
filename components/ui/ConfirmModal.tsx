@@ -33,7 +33,11 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/45 px-4" onClick={onCancel}>
+    <div
+      data-testid="confirm-modal"
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/45 px-4"
+      onClick={onCancel}
+    >
       <div
         role="dialog"
         aria-modal="true"
@@ -42,10 +46,16 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
         }`}
         onClick={(event) => event.stopPropagation()}
       >
-        <h2 className="text-base font-semibold">{title}</h2>
-        <p className={`mt-2 text-sm leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{message}</p>
+        <h2 data-testid="confirm-modal-title" className="text-base font-semibold">{title}</h2>
+        <p
+          data-testid="confirm-modal-message"
+          className={`mt-2 text-sm leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}
+        >
+          {message}
+        </p>
         <div className="mt-4 flex justify-end gap-2">
           <button
+            data-testid="confirm-modal-cancel"
             type="button"
             onClick={onCancel}
             className={`rounded-md border px-3 py-2 text-sm font-medium ${
@@ -57,6 +67,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
             Cancel
           </button>
           <button
+            data-testid="confirm-modal-confirm"
             type="button"
             onClick={onConfirm}
             className="rounded-md border border-red-700 bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700"

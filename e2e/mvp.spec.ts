@@ -51,8 +51,9 @@ test('mvp happy path: edit, export, reset, import', async ({ page }) => {
   expect(Array.isArray(exportedPayload.diagram?.edges)).toBe(true);
   expect(exportedPayload.diagram?.edges?.length).toBe(editedEdgeCount);
 
-  page.once('dialog', (dialog) => dialog.accept());
   await page.locator('[data-testid="toolbar-reset-canvas"]').click();
+  await expect(page.getByTestId('confirm-modal')).toBeVisible();
+  await page.getByTestId('confirm-modal-confirm').click();
   await expect.poll(async () => countEdges(page)).toBe(initialEdgeCount);
 
   const fileChooserPromise = page.waitForEvent('filechooser');
@@ -63,6 +64,8 @@ test('mvp happy path: edit, export, reset, import', async ({ page }) => {
     mimeType: 'application/json',
     buffer: Buffer.from(exportedText, 'utf8')
   });
+  await expect(page.getByTestId('confirm-modal')).toBeVisible();
+  await page.getByTestId('confirm-modal-confirm').click();
 
   await expect.poll(async () => countEdges(page)).toBe(editedEdgeCount);
 });

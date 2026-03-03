@@ -453,7 +453,10 @@ const App: React.FC = () => {
     (snapshot: DiagramSnapshot = getCurrentSnapshot(), layout: LayoutSettings = getCurrentLayout()) => {
       const diagramSaved = persistDiagramToStorage(RECOVERY_STORAGE_KEY, snapshot);
       const layoutSaved = persistLayoutToStorage(RECOVERY_LAYOUT_STORAGE_KEY, layout);
-      const nextMeta: RecoveryMeta = { lastSavedAt: new Date().toISOString() };
+      const previousSavedAt = recoveryLastSavedAt ? Date.parse(recoveryLastSavedAt) : Number.NaN;
+      const nextSavedAtMs =
+        Number.isFinite(previousSavedAt) && Date.now() <= previousSavedAt ? previousSavedAt + 1 : Date.now();
+      const nextMeta: RecoveryMeta = { lastSavedAt: new Date(nextSavedAtMs).toISOString() };
       const metaSaved = persistRecoveryMeta(nextMeta);
       if (diagramSaved && layoutSaved) {
         setHasRecoverySnapshot(true);
@@ -471,7 +474,7 @@ const App: React.FC = () => {
       );
       return false;
     },
-    [getCurrentLayout, getCurrentSnapshot]
+    [getCurrentLayout, getCurrentSnapshot, recoveryLastSavedAt]
   );
 
   useEffect(() => {

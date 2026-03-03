@@ -25,8 +25,9 @@ test('backup status and recency metadata stay accurate after reset/import/restor
   await expect(status).toContainText('Backup: Not yet created');
   await expect(status).toHaveAttribute('data-last-saved-at', '');
 
-  page.once('dialog', (dialog) => dialog.accept());
   await page.getByTestId('toolbar-reset-canvas').click();
+  await expect(page.getByTestId('confirm-modal')).toBeVisible();
+  await page.getByTestId('confirm-modal-confirm').click();
   await expect(status).toContainText('Backup: Available');
   await expect(status).toContainText('last saved');
   const resetSavedAt = await status.getAttribute('data-last-saved-at');
@@ -47,6 +48,8 @@ test('backup status and recency metadata stay accurate after reset/import/restor
     mimeType: 'application/json',
     buffer: Buffer.from(exportedText, 'utf8')
   });
+  await expect(page.getByTestId('confirm-modal')).toBeVisible();
+  await page.getByTestId('confirm-modal-confirm').click();
 
   await expect(status).toContainText('Backup: Available');
   await expect(status).toContainText('last saved');

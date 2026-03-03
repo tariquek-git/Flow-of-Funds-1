@@ -20,3 +20,15 @@
 - [ ] Deploy rebased `main` to hosted target
 - [ ] Run smoke flow on hosted URL
 - [ ] Monitor runtime errors for 24h
+
+## 2026-03-03 Stabilization Baseline
+- [x] `npm run build`
+- [x] `npm run test:qa`
+- [x] E2E total: 31 passed, 0 failed
+- [x] Reset/import/recovery modal flows passing
+- [x] Recovery timestamp recency assertions passing
+
+## Current Release Candidate Evidence
+- Branch: `main`
+- Baseline commit before stabilization: `0fc7609`
+- Verification completed: `2026-03-03 21:40:58 UTC` / `2026-03-03 16:40:58 EST`

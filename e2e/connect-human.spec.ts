@@ -58,6 +58,8 @@ const importDiagramText = async (page: Page, jsonText: string) => {
     mimeType: 'application/json',
     buffer: Buffer.from(jsonText, 'utf8')
   });
+  await expect(page.getByTestId('confirm-modal')).toBeVisible();
+  await page.getByTestId('confirm-modal-confirm').click();
 };
 
 test.beforeEach(async ({ page }) => {
@@ -117,8 +119,9 @@ test('edge interactions remain reachable after reset, import, and pan', async ({
 
   const exportedText = await exportDiagramText(page);
 
-  page.once('dialog', (dialog) => dialog.accept());
   await page.getByTestId('toolbar-reset-canvas').click();
+  await expect(page.getByTestId('confirm-modal')).toBeVisible();
+  await page.getByTestId('confirm-modal-confirm').click();
   await expect.poll(async () => countEdges(page)).toBe(baseline);
 
   await page.getByRole('button', { name: 'Connect tool' }).click();

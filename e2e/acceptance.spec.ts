@@ -90,8 +90,9 @@ test('reset and restore recover previous workspace state', async ({ page }) => {
   const modifiedEdgeCount = await page.locator(EDGE_SELECTOR).count();
   await expect(modifiedEdgeCount).toBeGreaterThan(2);
 
-  page.once('dialog', (dialog) => dialog.accept());
   await page.locator('[data-testid="toolbar-reset-canvas"]').click();
+  await expect(page.getByTestId('confirm-modal')).toBeVisible();
+  await page.getByTestId('confirm-modal-confirm').click();
   await expect.poll(async () => page.locator(EDGE_SELECTOR).count()).toBe(2);
 
   const restoreButton = page.locator('[data-testid="toolbar-restore"]');

@@ -27,6 +27,8 @@ test('invalid import shows non-blocking error toast', async ({ page }) => {
     buffer: Buffer.from('{"broken":true', 'utf8')
   });
 
+  await expect(page.getByTestId('confirm-modal')).toBeVisible();
+  await page.getByTestId('confirm-modal-confirm').click();
   await expect(page.getByTestId('toast-message').first()).toContainText('Import failed');
 });
 
@@ -40,8 +42,9 @@ test('export shows success toast', async ({ page }) => {
 });
 
 test('reset shows success toast after backup save', async ({ page }) => {
-  page.once('dialog', (dialog) => dialog.accept());
   await page.getByTestId('toolbar-reset-canvas').click();
+  await expect(page.getByTestId('confirm-modal')).toBeVisible();
+  await page.getByTestId('confirm-modal-confirm').click();
 
   await expect(
     page.getByTestId('toast-message').filter({ hasText: 'Canvas reset to starter template. Backup saved.' })
@@ -71,6 +74,8 @@ test('import valid JSON shows success toast', async ({ page }) => {
     buffer: Buffer.from(exportedJson, 'utf8')
   });
 
+  await expect(page.getByTestId('confirm-modal')).toBeVisible();
+  await page.getByTestId('confirm-modal-confirm').click();
   await expect(
     page.getByTestId('toast-message').filter({ hasText: 'Diagram imported successfully. Backup saved.' })
   ).toBeVisible();
