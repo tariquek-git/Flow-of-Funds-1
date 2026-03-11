@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   Sparkles,
   ChevronLeft,
@@ -210,6 +210,63 @@ const hasDirectConnection = (allEdges: Edge[], nodeAId: string, nodeBId: string)
       (edge.sourceId === nodeBId && edge.targetId === nodeAId)
   );
 
+type DiagramLintIssue = {
+  id: 'missing-settlement' | 'missing-exception' | 'missing-reconciliation';
+  message: string;
+  actionLabel: string;
+};
+
+const getDiagramLintIssues = (allNodes: Node[], allEdges: Edge[]): DiagramLintIssue[] => {
+  const issues: DiagramLintIssue[] = [];
+  const settlementRails = new Set<PaymentRail>([
+    PaymentRail.ACH,
+    PaymentRail.RTP,
+    PaymentRail.FEDNOW,
+    PaymentRail.WIRE,
+    PaymentRail.SWIFT,
+    PaymentRail.EFT_CANADA,
+    PaymentRail.INTERAC,
+    PaymentRail.BANK_TRANSFER
+  ]);
+
+  const hasSettlementLeg = allEdges.some(
+    (edge) => edge.direction === FlowDirection.SETTLEMENT || settlementRails.has(edge.rail)
+  );
+  if (!hasSettlementLeg) {
+    issues.push({
+      id: 'missing-settlement',
+      message: 'Missing settlement leg: add at least one settlement edge/rail.',
+      actionLabel: 'Fix settlement'
+    });
+  }
+
+  const hasExceptionPath = allEdges.some(
+    (edge) => edge.isExceptionPath || edge.direction === FlowDirection.RETURN
+  );
+  if (!hasExceptionPath) {
+    issues.push({
+      id: 'missing-exception',
+      message: 'Missing exception flow: add a return/refund/exception path.',
+      actionLabel: 'Fix exception flow'
+    });
+  }
+
+  const hasReconciliationNode = allNodes.some((node) => {
+    if (node.type === EntityType.SWITCH) return true;
+    const searchable = `${node.label} ${node.description || ''}`.toLowerCase();
+    return searchable.includes('recon') || searchable.includes('ledger');
+  });
+  if (!hasReconciliationNode) {
+    issues.push({
+      id: 'missing-reconciliation',
+      message: 'Missing reconciliation node: add a ledger/reconciliation step.',
+      actionLabel: 'Add reconciliation node'
+    });
+  }
+
+  return issues;
+};
+
 type EditMergeState = { id: string | null; at: number };
 type ToastTone = 'info' | 'success' | 'warning' | 'error';
 type ToastMessage = {
@@ -340,6 +397,10 @@ const App: React.FC = () => {
   // Link Attributes State
   const [activeEdgeStyle, setActiveEdgeStyle] = useState<'solid' | 'dashed' | 'dotted'>('solid');
   const [activeArrowConfig, setActiveArrowConfig] = useState({ showArrowHead: true, showMidArrow: false });
+  const [hasEditedFlow, setHasEditedFlow] = useState(false);
+  const [hasExportedFlow, setHasExportedFlow] = useState(false);
+  const [hasResetAfterExport, setHasResetAfterExport] = useState(false);
+  const [hasImportedAfterReset, setHasImportedAfterReset] = useState(false);
 
   const [past, setPast] = useState<DiagramSnapshot[]>([]);
   const [future, setFuture] = useState<DiagramSnapshot[]>([]);
@@ -447,13 +508,17 @@ const App: React.FC = () => {
     const current = getCurrentSnapshot();
     setPast((prev) => [...prev.slice(-(HISTORY_LIMIT - 1)), current]);
     setFuture([]);
+    setHasEditedFlow(true);
   }, [getCurrentSnapshot]);
+
+  const diagramLintIssues = useMemo(() => getDiagramLintIssues(nodes, edges), [nodes, edges]);
+  const isChecklistComplete = hasEditedFlow && hasExportedFlow && hasResetAfterExport && hasImportedAfterReset;
 
   const saveRecoverySnapshot = useCallback(
     (snapshot: DiagramSnapshot = getCurrentSnapshot(), layout: LayoutSettings = getCurrentLayout()) => {
       const diagramSaved = persistDiagramToStorage(RECOVERY_STORAGE_KEY, snapshot);
       const layoutSaved = persistLayoutToStorage(RECOVERY_LAYOUT_STORAGE_KEY, layout);
-      const previousSavedAt = recoveryLastSavedAt ? Date.parse(recoveryLastSavedAt) : Number.NaN;
+      const previousSavedAt = Date.parse(loadRecoveryMeta()?.lastSavedAt || '');
       const nextSavedAtMs =
         Number.isFinite(previousSavedAt) && Date.now() <= previousSavedAt ? previousSavedAt + 1 : Date.now();
       const nextMeta: RecoveryMeta = { lastSavedAt: new Date(nextSavedAtMs).toISOString() };
@@ -474,7 +539,7 @@ const App: React.FC = () => {
       );
       return false;
     },
-    [getCurrentLayout, getCurrentSnapshot, recoveryLastSavedAt]
+    [getCurrentLayout, getCurrentSnapshot]
   );
 
   useEffect(() => {
@@ -1146,8 +1211,11 @@ const App: React.FC = () => {
     setSelectedEdgeId(null);
     setIsInspectorOpen(false);
     setResetModalOpen(false);
+    if (hasExportedFlow) {
+      setHasResetAfterExport(true);
+    }
     pushToast('Canvas reset to starter template. Backup saved.', 'success');
-  }, [applySnapshot, pushHistory, pushToast, saveRecoverySnapshot]);
+  }, [applySnapshot, hasExportedFlow, pushHistory, pushToast, saveRecoverySnapshot]);
 
   const handleResetCanvas = useCallback(() => {
     setResetModalOpen(true);
@@ -1211,6 +1279,9 @@ const App: React.FC = () => {
       if (parsed.layout) {
         applyLayoutSettings(parsed.layout);
       }
+      if (hasResetAfterExport) {
+        setHasImportedAfterReset(true);
+      }
       pushToast('Diagram imported successfully. Backup saved.', 'success');
     } catch (error) {
       console.error('Import failed:', error);
@@ -1219,7 +1290,7 @@ const App: React.FC = () => {
       pendingImportFile.current = null;
       setImportModalOpen(false);
     }
-  }, [applyLayoutSettings, applySnapshot, pushHistory, pushToast, saveRecoverySnapshot]);
+  }, [applyLayoutSettings, applySnapshot, hasResetAfterExport, pushHistory, pushToast, saveRecoverySnapshot]);
 
   const handleCancelImport = useCallback(() => {
     pendingImportFile.current = null;
@@ -1235,8 +1306,15 @@ const App: React.FC = () => {
     a.download = `finflow-diagram-${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
+    setHasExportedFlow(true);
+    if (diagramLintIssues.length > 0) {
+      pushToast(
+        `Exported with ${diagramLintIssues.length} warning${diagramLintIssues.length > 1 ? 's' : ''}: ${diagramLintIssues[0].message}`,
+        'warning'
+      );
+    }
     pushToast('Diagram exported successfully.', 'success');
-  }, [getCurrentLayout, getCurrentSnapshot, pushToast]);
+  }, [diagramLintIssues, getCurrentLayout, getCurrentSnapshot, pushToast]);
 
   const handleCopyLink = useCallback(async () => {
     const payload: ExportPayloadV2 = createExportPayload(getCurrentSnapshot(), getCurrentLayout());
@@ -1360,6 +1438,30 @@ const App: React.FC = () => {
       setIsSidebarOpen(false);
     }
   }, [isMobileViewport]);
+
+  const handleRunLintAction = useCallback(
+    (issueId: DiagramLintIssue['id']) => {
+      if (issueId === 'missing-settlement') {
+        setActiveTool('draw');
+        setIsInspectorOpen(false);
+        pushToast('Connect two nodes, then set Direction to Settlement or choose a settlement rail.', 'info');
+        return;
+      }
+
+      if (issueId === 'missing-exception') {
+        setActiveTool('draw');
+        setIsInspectorOpen(false);
+        pushToast('Add a return/refund edge and mark it as an exception path in Edge settings.', 'info');
+        return;
+      }
+
+      handleAddNode(EntityType.SWITCH);
+      pushToast('Reconciliation node inserted near canvas center.', 'success');
+      setInspectorTabRequest('canvas');
+      setIsInspectorOpen(true);
+    },
+    [handleAddNode, pushToast, setActiveTool]
+  );
 
   const floatingContextAnchor = useCallback((): { x: number; y: number } | null => {
     const clampAnchor = (x: number, y: number) => {
@@ -1931,11 +2033,20 @@ const App: React.FC = () => {
                     Dismiss
                   </button>
                 </div>
-                <ol className="space-y-1 pl-4 text-[11px]">
-                  <li>1. Add or edit a node/connector.</li>
-                  <li>2. Click <span className="mono">Export JSON</span>.</li>
-                  <li>3. Click <span className="mono">Reset</span>, then <span className="mono">Import JSON</span> to restore.</li>
+                <ol className="space-y-1 text-[11px]">
+                  <li className={hasEditedFlow ? 'text-emerald-700 dark:text-emerald-300' : ''}>
+                    {hasEditedFlow ? '[x]' : '[ ]'} 1. Add or edit a node/connector.
+                  </li>
+                  <li className={hasExportedFlow ? 'text-emerald-700 dark:text-emerald-300' : ''}>
+                    {hasExportedFlow ? '[x]' : '[ ]'} 2. Click <span className="mono">Export JSON</span>.
+                  </li>
+                  <li className={hasResetAfterExport && hasImportedAfterReset ? 'text-emerald-700 dark:text-emerald-300' : ''}>
+                    {hasResetAfterExport && hasImportedAfterReset ? '[x]' : '[ ]'} 3. Click <span className="mono">Reset</span>, then <span className="mono">Import JSON</span> to restore.
+                  </li>
                 </ol>
+                <p className="mt-2 text-[10px] font-medium uppercase tracking-[0.1em] text-slate-500 dark:text-slate-400">
+                  Progress: {isChecklistComplete ? 'Completed' : 'In progress'}
+                </p>
               </div>
             )}
             <div
@@ -2030,6 +2141,8 @@ const App: React.FC = () => {
               onImportDiagram={() => importInputRef.current?.click()}
               onExportDiagram={handleExportDiagram}
               activeTabRequest={inspectorTabRequest}
+              lintIssues={diagramLintIssues}
+              onRunLintAction={handleRunLintAction}
             />
           )}
         </div>

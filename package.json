@@ -20,7 +20,8 @@
     "test:a11y": "playwright test e2e/a11y.spec.ts",
     "test:qa": "playwright test",
     "test:smoke:headed": "playwright test --headed",
-    "test:smoke:install": "playwright install chromium"
+    "test:smoke:install": "playwright install chromium",
+    "pilot:log": "node scripts/log-pilot-session.mjs"
   },
   "dependencies": {
     "@google/genai": "^1.40.0",

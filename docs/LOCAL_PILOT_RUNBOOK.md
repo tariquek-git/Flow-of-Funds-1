@@ -12,8 +12,10 @@ Run a short local validation sprint with 3 to 5 users to verify first-session MV
 ## Facilitator Setup
 1. Start app locally with `npm run dev`.
 2. Open a fresh browser profile or clear localStorage before each session.
-3. Have `docs/LOCAL_PILOT_SESSION_LOG.csv` open to log outcomes.
+3. Have `docs/LOCAL_PILOT_SESSION_LOG.csv` (legacy) or `docs/LOCAL_PILOT_SESSION_LOG_V2.csv` (detailed) open to log outcomes.
 4. Use a 15-minute max session timer.
+5. Optional quick logging command (writes to `docs/LOCAL_PILOT_SESSION_LOG_V2.csv`):
+   - `npm run pilot:log -- --id=session-01 --persona=fintech-pm --browser=chrome --completed=yes --minutes=11 --intervention=no --p0=0 --p1=1 --p2=1 --f1=\"connector discovery\" --notes=\"needed one prompt\"`
 
 ## Participant Script
 1. Add or edit a node/connector in the starter diagram.
@@ -24,6 +26,7 @@ Run a short local validation sprint with 3 to 5 users to verify first-session MV
 
 ## Logging Rules
 - Record one row per participant session in `docs/LOCAL_PILOT_SESSION_LOG.csv`.
+- For the richer scorecard schema, use `docs/LOCAL_PILOT_SESSION_LOG_V2.csv` via `npm run pilot:log -- ...`.
 - Track completion, duration, failed step(s), and friction notes.
 - Mark severity as:
   - `high`: user cannot complete first-session flow without intervention.
