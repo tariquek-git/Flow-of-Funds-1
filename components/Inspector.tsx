@@ -28,6 +28,11 @@ import {
 } from 'lucide-react';
 
 export type InspectorTab = 'node' | 'edge' | 'canvas' | 'export';
+type LintIssue = {
+  id: 'missing-settlement' | 'missing-exception' | 'missing-reconciliation';
+  message: string;
+  actionLabel: string;
+};
 
 interface InspectorProps {
   nodes: Node[];
@@ -55,6 +60,8 @@ interface InspectorProps {
   onResetCanvas: () => void;
   onImportDiagram: () => void;
   onExportDiagram: () => void;
+  lintIssues?: LintIssue[];
+  onRunLintAction?: (issueId: LintIssue['id']) => void;
   activeTabRequest?: InspectorTab | null;
 }
 
@@ -196,6 +203,8 @@ const Inspector: React.FC<InspectorProps> = ({
   onResetCanvas,
   onImportDiagram,
   onExportDiagram,
+  lintIssues = [],
+  onRunLintAction,
   activeTabRequest
 }) => {
   const selectedNode = useMemo(
@@ -545,6 +554,34 @@ const Inspector: React.FC<InspectorProps> = ({
 
         {activeTab === 'canvas' ? (
           <>
+            <PanelSection title="Flow Checks" icon={<ShieldCheck className="h-3.5 w-3.5" />}>
+              {lintIssues.length === 0 ? (
+                <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-semibold text-emerald-700 dark:border-emerald-700/40 dark:bg-emerald-900/20 dark:text-emerald-300">
+                  No critical flow-structure warnings detected.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {lintIssues.map((issue) => (
+                    <div
+                      key={issue.id}
+                      className="rounded-md border border-amber-300 bg-amber-50 px-2.5 py-2 text-[11px] dark:border-amber-700/50 dark:bg-amber-900/20"
+                    >
+                      <p className="text-amber-900 dark:text-amber-200">{issue.message}</p>
+                      {onRunLintAction ? (
+                        <button
+                          type="button"
+                          onClick={() => onRunLintAction(issue.id)}
+                          className="mt-1.5 rounded-md border border-amber-400 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-800 hover:bg-amber-100 dark:border-amber-600 dark:text-amber-200 dark:hover:bg-amber-900/40"
+                        >
+                          {issue.actionLabel}
+                        </button>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </PanelSection>
+
             <PanelSection title="Canvas Utilities" icon={<Settings2 className="h-3.5 w-3.5" />}>
               <div className="grid grid-cols-2 gap-2">
                 <button
